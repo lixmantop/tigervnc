@@ -868,6 +868,7 @@ void Viewport::popupContextMenu()
     break;
   case ID_REFRESH:
     cc->refreshFramebuffer();
+    cc->resetAudio(true);
     break;
   case ID_OPTIONS:
     OptionsDialog::showDialog();

@@ -28,6 +28,7 @@ namespace rfb {
   const int encodingHextile = 5;
   const int encodingTight = 7;
   const int encodingZRLE = 16;
+  const int encodingJpeg = 21;
 #ifdef HAVE_H264
   const int encodingH264 = 50;
 #endif
@@ -45,6 +46,7 @@ namespace rfb {
   const int pseudoEncodingContinuousUpdates = -313;
   const int pseudoEncodingCursorWithAlpha = -314;
   const int pseudoEncodingQEMUKeyEvent = -258;
+  const int pseudoEncodingQEMUAudio = -259;
 
   // TightVNC-specific
   const int pseudoEncodingLastRect = -224;

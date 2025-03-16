@@ -25,6 +25,7 @@
 #include <assert.h>
 #ifndef _WIN32
 #include <unistd.h>
+#include <pulse/pulseaudio.h>
 #endif
 
 #include <core/LogWriter.h>
@@ -59,6 +60,10 @@
 
 #ifdef WIN32
 #include "win32.h"
+#include "Win32AudioOutput.h"
+#endif
+#ifndef WIN32
+#include "PulseAudioOutput.h"
 #endif
 
 static core::LogWriter vlog("CConn");
@@ -77,7 +82,14 @@ static const rfb::PixelFormat mediumColourPF(8, 8, false, true,
 static const unsigned bpsEstimateWindow = 1000;
 
 CConn::CConn(const char* vncServerName, network::Socket* socket=nullptr)
-  : serverPort(0), desktop(nullptr), updateCount(0), pixelCount(0),
+  : serverPort(0), desktop(nullptr),
+#ifdef WIN32
+    win32AudioOutput(NULL),
+#endif
+#ifndef WIN32
+    pulseAudioOutput(NULL),
+#endif
+	updateCount(0), pixelCount(0),
     lastServerEncoding((unsigned int)-1), bpsEstimate(20000000)
 {
   setShared(::shared);
@@ -123,10 +135,38 @@ CConn::CConn(const char* vncServerName, network::Socket* socket=nullptr)
   setServerName(serverHost.c_str());
   setStreams(&sock->inStream(), &sock->outStream());
 
+#ifndef WIN32
+  supportsAudio = true;
+  pulseAudioOutput = new PulseAudioOutput();
+  if(!pulseAudioOutput->isInit()) {
+	  delete pulseAudioOutput;
+	  pulseAudioOutput = NULL;
+  }
+#else
+  win32AudioOutput = new Win32AudioOutput();
+  supportsAudio = win32AudioOutput->isAvailable();
+  if (!supportsAudio) {
+    delete win32AudioOutput;
+    win32AudioOutput = NULL;
+  }
+#endif
+
   initialiseProtocol();
 
   OptionsDialog::addCallback(handleOptions, this);
 }
+
+void CConn::resetAudio(bool startstop) {
+	if(pulseAudioOutput !=NULL && pulseAudioOutput->isInit()){
+		pulseAudioOutput->cleanBuffer();
+		if(startstop) {
+			pulseAudioOutput->notifyStreamingStartStop(true);
+		} else {
+			pulseAudioOutput->notifyStreamingStartStop(false);
+		}
+	}
+}
+
 
 CConn::~CConn()
 {
@@ -134,6 +174,15 @@ CConn::~CConn()
 
   OptionsDialog::removeCallback(handleOptions);
   Fl::remove_timeout(handleUpdateTimeout, this);
+
+#ifdef WIN32
+  if (win32AudioOutput)
+    delete win32AudioOutput;
+#endif
+#ifndef WIN32
+  if (pulseAudioOutput)
+    delete pulseAudioOutput;
+#endif
 
   if (desktop)
     delete desktop;
@@ -464,6 +513,82 @@ void CConn::handleClipboardData(const char* data)
   desktop->handleClipboardData(data);
 }
 
+bool CConn::audioInitAndGetFormat(uint8_t* sampleFormat,
+									uint8_t* channels,
+									uint32_t* samplingFreq)
+{
+#ifdef WIN32
+  if (win32AudioOutput) {
+    if (win32AudioOutput->isOpened() || win32AudioOutput->openAndAllocateBuffer()) {
+      (*sampleFormat) = win32AudioOutput->getSampleFormat();
+      (*channels)     = win32AudioOutput->getNumberOfChannels();
+      (*samplingFreq) = win32AudioOutput->getSamplingFreq();
+      return true;
+    } else {
+      delete win32AudioOutput;
+      win32AudioOutput = NULL;
+    }
+  }
+#endif
+
+#ifndef WIN32
+  if(pulseAudioOutput) {
+	  (*sampleFormat) = PA_SAMPLE_S16LE;
+	  (*channels)     = 2;
+	  (*samplingFreq) = 44100;
+	  return true;
+  }
+#endif
+ return false;
+
+}
+
+size_t CConn::audioSampleSize()
+{
+#ifdef WIN32
+  if (win32AudioOutput)
+    return win32AudioOutput->getSampleSize();
+#endif
+  return 4;
+}
+
+void CConn::audioNotifyStreamingStartStop(bool isStart)
+{
+#ifdef WIN32
+  if (win32AudioOutput)
+    return win32AudioOutput->notifyStreamingStartStop(isStart);
+#endif
+#ifndef WIN32
+  if (pulseAudioOutput)
+    return pulseAudioOutput->notifyStreamingStartStop(isStart);
+#endif
+}
+
+size_t CConn::audioAddSamples(const uint8_t* data, size_t size)
+{
+#ifdef WIN32
+  if (win32AudioOutput)
+    return win32AudioOutput->addSamples(data, size);
+#endif
+#ifndef WIN32
+  if (pulseAudioOutput)
+    return pulseAudioOutput->addSamples(data, size);
+#endif
+  return size;
+}
+
+bool CConn::audioSubmitSamples()
+{
+#ifdef WIN32
+  if (win32AudioOutput)
+    return win32AudioOutput->submitSamples();
+#endif
+#ifndef WIN32
+  if (pulseAudioOutput)
+    return pulseAudioOutput->submitSamples();
+#endif
+  return false;
+}
 
 ////////////////////// Internal methods //////////////////////
 

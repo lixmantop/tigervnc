@@ -36,8 +36,10 @@ using namespace rfb;
 ServerParams::ServerParams()
   : majorVersion(0), minorVersion(0),
     supportsQEMUKeyEvent(false),
+    supportsQEMUAudio(false),
     supportsSetDesktopSize(false), supportsFence(false),
     supportsContinuousUpdates(false), supportsExtendedMouseButtons(false),
+    awaitsQEMUAudioFormatMsg(false),
     width_(0), height_(0),
     ledState_(ledUnknown)
 {

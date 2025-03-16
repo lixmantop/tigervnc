@@ -68,19 +68,22 @@ namespace rfb {
     const Cursor& cursor() const { return *cursor_; }
     void setCursor(const Cursor& cursor);
 
-    unsigned int ledState() { return ledState_; }
-    void setLEDState(unsigned int state);
 
     uint32_t clipboardFlags() const { return clipFlags; }
     uint32_t clipboardSize(unsigned int format) const;
     void setClipboardCaps(uint32_t flags, const uint32_t* lengths);
 
     bool supportsQEMUKeyEvent;
+    bool supportsQEMUAudio;
     bool supportsSetDesktopSize;
     bool supportsFence;
     bool supportsContinuousUpdates;
     bool supportsExtendedMouseButtons;
 
+    bool awaitsQEMUAudioFormatMsg;
+
+    unsigned int ledState() { return ledState_; }
+    void setLEDState(unsigned int state);
   private:
 
     int width_;
@@ -90,7 +93,7 @@ namespace rfb {
     PixelFormat* pf_;
     std::string name_;
     Cursor* cursor_;
-    unsigned int ledState_;
+    unsigned int ledState_=-1;
     uint32_t clipFlags;
     uint32_t clipSizes[16];
   };

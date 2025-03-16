@@ -262,6 +262,11 @@ namespace rfb {
 
     CSecurity *csecurity;
     SecurityClient security;
+
+    virtual bool audioInitAndGetFormat(uint8_t* sampleFormat,
+    									uint8_t* channels,
+										uint32_t* samplingFreq);
+
   protected:
     void setState(stateEnum s) { state_ = s; }
 
@@ -277,6 +282,7 @@ namespace rfb {
     bool supportsCursorPosition;
     bool supportsDesktopResize;
     bool supportsLEDState;
+    bool supportsAudio;
 
   private:
     // This is a default implementation of fences that automatically

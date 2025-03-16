@@ -93,6 +93,12 @@ namespace rfb {
                                         const uint8_t* const* data);
 
     ServerParams server;
+    virtual void supportsQEMUAudioAndAwaitsFormatMsgOnce();
+    virtual size_t audioSampleSize();
+    virtual void   audioNotifyStreamingStartStop(bool isStart);
+    virtual size_t audioAddSamples(const uint8_t* data, size_t size);
+    virtual bool   audioSubmitSamples();
+    
   };
 }
 #endif

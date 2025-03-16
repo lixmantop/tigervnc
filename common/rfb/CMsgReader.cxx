@@ -33,6 +33,7 @@
 #include <rdr/ZlibInStream.h>
 
 #include <rfb/msgTypes.h>
+#include <rfb/qemuTypes.h>
 #include <rfb/clipboardTypes.h>
 #include <rfb/Exception.h>
 #include <rfb/CMsgHandler.h>
@@ -40,6 +41,10 @@
 #include <rfb/PixelBuffer.h>
 #include <rfb/ScreenSet.h>
 #include <rfb/encodings.h>
+#ifndef __rfbmin
+#define __rfbmin(a,b) (((a) < (b)) ? (a) : (b))
+#endif
+
 
 static core::LogWriter vlog("CMsgReader");
 
@@ -49,7 +54,7 @@ using namespace rfb;
 
 CMsgReader::CMsgReader(CMsgHandler* handler_, rdr::InStream* is_)
   : imageBufIdealSize(0), handler(handler_), is(is_),
-    state(MSGSTATE_IDLE), cursorEncoding(-1)
+    state(MSGSTATE_IDLE), cursorEncoding(-1), nAudioBytesLeft(0)
 {
 }
 
@@ -92,6 +97,13 @@ bool CMsgReader::readServerInit()
 
 bool CMsgReader::readMsg()
 {
+  if (state == MSGSTATE_AUDIO_DATA) {
+    if (readAudioData())
+      state = MSGSTATE_IDLE;
+    else
+      return false;
+  }
+
   if (state == MSGSTATE_IDLE) {
     if (!is->hasData(1))
       return false;
@@ -121,6 +133,9 @@ bool CMsgReader::readMsg()
       break;
     case msgTypeEndOfContinuousUpdates:
       ret = readEndOfContinuousUpdates();
+      break;
+    case msgTypeQEMUServerMessage:
+      ret = readQemuServerMessage();
       break;
     default:
       throw protocol_error(core::format("Unknown message type %d", currentMsgType));
@@ -204,6 +219,10 @@ bool CMsgReader::readMsg()
       break;
     case pseudoEncodingQEMUKeyEvent:
       handler->supportsQEMUKeyEvent();
+      ret = true;
+      break;
+    case pseudoEncodingQEMUAudio:
+      handler->supportsQEMUAudioAndAwaitsFormatMsgOnce();
       ret = true;
       break;
     case pseudoEncodingExtendedMouseButtons:
@@ -459,6 +478,69 @@ bool CMsgReader::readFence()
 bool CMsgReader::readEndOfContinuousUpdates()
 {
   handler->endOfContinuousUpdates();
+  return true;
+}
+
+bool CMsgReader::readQemuServerMessage()
+{
+  if (!is->hasData(1 + 2))
+    return false;
+
+  is->setRestorePoint();
+  uint8_t  subMsgType = is->readU8();
+  uint16_t operation  = is->readU16();
+
+  if (subMsgType != qemuAudio) {
+    is->clearRestorePoint();
+    return true;
+  }
+
+  switch (operation) {
+    case msgFromQemuAudioBegin:
+      is->clearRestorePoint();
+      handler->audioNotifyStreamingStartStop(true /* isStart */);
+      return true;
+
+    case msgFromQemuAudioEnd:
+      is->clearRestorePoint();
+      handler->audioNotifyStreamingStartStop(false /* isStart */);
+      return true;
+
+    case msgFromQemuAudioData:
+      if (!is->hasDataOrRestore(4))
+        return false;
+      is->clearRestorePoint();
+      nAudioBytesLeft = is->readU32();
+      if (nAudioBytesLeft == 0)
+        return true;
+//      if ((nAudioBytesLeft % handler->audioSampleSize()) != 0)
+//        throw Exception("QEMU audio protocol error: sample torn apart");
+      if (readAudioData())
+        return true;
+      state = MSGSTATE_AUDIO_DATA;
+      return false;
+
+    default:
+      is->clearRestorePoint();
+      //throw Exception("Invalid QEMU audio operation");
+      return true;
+  }
+}
+
+bool CMsgReader::readAudioData()
+{
+  while (nAudioBytesLeft != 0) {
+    is->hasData(__rfbmin(maxBufferedAudioBytes, nAudioBytesLeft));  // request as much as possible
+    size_t available = __rfbmin(is->avail(), nAudioBytesLeft);      // see how many we've got
+    if (available == 0)
+      return false;
+    size_t consumed = handler->audioAddSamples(is->getptr(available), available);
+    if (consumed == 0)
+      return false;
+    is->skip(consumed);
+    nAudioBytesLeft -= consumed;
+  }
+  handler->audioSubmitSamples();
   return true;
 }
 

@@ -68,6 +68,8 @@ namespace rfb {
     void writeClipboardNotify(uint32_t flags);
     void writeClipboardProvide(uint32_t flags, const size_t* lengths,
                                const uint8_t* const* data);
+    void writeQemuAudioEnableOrDisable(bool enable);
+    void writeQemuAudioSetFormat(uint8_t fmt, uint8_t channels, uint32_t frequency);
 
   protected:
     void startMsg(int type);

@@ -28,9 +28,10 @@
 #include <rfb/RawDecoder.h>
 
 using namespace rfb;
-
-RawDecoder::RawDecoder() : Decoder(DecoderPlain)
+// neticar
+RawDecoder::RawDecoder(int _jpeg) : Decoder(DecoderPlain)
 {
+	jpeg=_jpeg;
 }
 
 RawDecoder::~RawDecoder()
@@ -40,16 +41,54 @@ RawDecoder::~RawDecoder()
 bool RawDecoder::readRect(const core::Rect& r, rdr::InStream* is,
                           const ServerParams& server, rdr::OutStream* os)
 {
-  if (!is->hasData(r.area() * (server.pf().bpp/8)))
-    return false;
-  os->copyBytes(is, r.area() * (server.pf().bpp/8));
-  return true;
+	int size;
+	if(jpeg==1) {
+	  if(is->hasData(4) ){
+		  is->setRestorePoint();
+		  size=is->readU32();
+	  } else {
+		  return false;
+	  }
+
+	  if (!is->hasDataOrRestore(size))
+	     return false;
+
+	   is->clearRestorePoint();
+
+
+	  os->writeU32(size);
+	  os->copyBytes(is, size);
+	  return true;
+
+	} else {
+	  if (!is->hasData(r.area() * (server.pf().bpp/8)))
+		return false;
+	  os->copyBytes(is, r.area() * (server.pf().bpp/8));
+	  return true;
+	}
+
 }
 
 void RawDecoder::decodeRect(const core::Rect& r, const uint8_t* buffer,
                             size_t buflen, const ServerParams& server,
                             ModifiablePixelBuffer* pb)
 {
-  assert(buflen >= (size_t)r.area() * (server.pf().bpp/8));
-  pb->imageRect(server.pf(), r, buffer);
+	if(jpeg==0) {
+		assert(buflen >= (size_t)r.area() * (server.pf().bpp/8));
+		pb->imageRect(server.pf(), r, buffer);
+	} else {
+		const void* bufptr = (const void*)buffer;
+
+	    int stride;
+	    void *buf;
+
+	    JpegDecompressor jd;
+	    int size;
+	    memcpy(&size, buffer, 4);
+	    //bufptr = bufptr + 4;
+	    buf = pb->getBufferRW(r, &stride);
+
+	    jd.decompress((uint8_t*)bufptr +4, buflen, (uint8_t *)buf, stride, r, pb->getPF());
+	    pb->commitBufferRW(r);
+	}
 }

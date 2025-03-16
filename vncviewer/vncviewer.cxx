@@ -195,7 +195,6 @@ static void mainloop(const char* vncserver, network::Socket* sock)
         exit(-1);
       }
     }
-
     delete cc;
 
     if (fatalError) {

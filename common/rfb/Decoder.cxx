@@ -76,6 +76,7 @@ bool Decoder::supported(int encoding)
   case encodingHextile:
   case encodingZRLE:
   case encodingTight:
+  case encodingJpeg:
 #ifdef HAVE_H264
   case encodingH264:
 #endif
@@ -89,7 +90,7 @@ Decoder* Decoder::createDecoder(int encoding)
 {
   switch (encoding) {
   case encodingRaw:
-    return new RawDecoder();
+    return new RawDecoder(0);
   case encodingCopyRect:
     return new CopyRectDecoder();
   case encodingRRE:
@@ -100,6 +101,8 @@ Decoder* Decoder::createDecoder(int encoding)
     return new ZRLEDecoder();
   case encodingTight:
     return new TightDecoder();
+  case encodingJpeg:
+	    return new RawDecoder(1);
 #ifdef HAVE_H264
   case encodingH264:
     return new H264Decoder();

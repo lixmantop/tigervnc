@@ -25,6 +25,14 @@
 #include <rfb/CConnection.h>
 
 #include "UserDialog.h"
+#ifdef WIN32
+class Win32AudioOutput;
+#endif
+#ifndef WIN32
+class PulseAudioOutput;
+#endif
+
+
 
 namespace network { class Socket; }
 
@@ -79,8 +87,16 @@ public:
   void fence(uint32_t flags, unsigned len,
              const uint8_t data[]) override;
 
+  virtual bool   audioInitAndGetFormat(uint8_t* sampleFormat,
+										  uint8_t* channels,
+										  uint32_t* samplingFreq) override;
+  virtual size_t audioSampleSize() override;
+  virtual void   audioNotifyStreamingStartStop(bool isStart) override;
+  virtual size_t audioAddSamples(const uint8_t* data, size_t size) override;
+  virtual bool   audioSubmitSamples() override;
+  void resetAudio(bool startstop);
   void setLEDState(unsigned int state) override;
-
+  
   void handleClipboardRequest() override;
   void handleClipboardAnnounce(bool available) override;
   void handleClipboardData(const char* data) override;
@@ -102,6 +118,12 @@ private:
   network::Socket* sock;
 
   DesktopWindow *desktop;
+#ifdef WIN32
+  Win32AudioOutput *win32AudioOutput;
+#endif
+#ifndef WIN32
+  PulseAudioOutput *pulseAudioOutput;
+#endif
 
   unsigned updateCount;
   unsigned pixelCount;
