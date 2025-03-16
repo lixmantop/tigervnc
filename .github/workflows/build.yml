@@ -48,7 +48,6 @@ jobs:
         target:
           - rocky9
           - focal
-          - noble
       fail-fast: false
     runs-on: ubuntu-latest
     env:
