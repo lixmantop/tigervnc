@@ -38,6 +38,8 @@ BuildRequires:  libselinux-devel, selinux-policy-devel, systemd
 # See https://github.com/TigerVNC/tigervnc/issues/8, also bug #1208814
 BuildRequires:  fltk-devel >= 1.3.3
 BuildRequires:  xorg-x11-server-devel
+# audio
+BuildRequires:  pulseaudio-libs-devel
 
 Requires:       hicolor-icon-theme
 Requires:       tigervnc-license
