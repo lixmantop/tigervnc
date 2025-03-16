@@ -103,6 +103,8 @@ Build-Depends:
   libdbus-1-dev (>= 1.0) [linux-any],
 # systemd-daemon
   libsystemd-dev [linux-any],
+# audio
+  libpulse-dev,
 Homepage: http://www.tigervnc.com
 
 Package: tigervncserver
