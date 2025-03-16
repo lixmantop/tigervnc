@@ -18,6 +18,7 @@ jobs:
           sudo apt-get install -y libxtst-dev libxdamage-dev libxfixes-dev libxrandr-dev libpam-dev
           sudo apt-get install -y libavcodec-dev libavutil-dev libswscale-dev
           sudo apt-get install -y libgtest-dev
+          sudo apt-get install -y libpulse-dev
       - name: Configure
         run: cmake -DCMAKE_BUILD_TYPE=Debug -S . -B build
       - name: Build
