@@ -157,7 +157,7 @@ CConn::CConn(const char* vncServerName, network::Socket* socket=nullptr)
   OptionsDialog::addCallback(handleOptions, this);
 }
 
-void CConn::resetAudio(bool startstop) {
+void CConn::resetAudio([[maybe_unused]]bool startstop) {
 #ifndef WIN32
 	if(pulseAudioOutput !=NULL && pulseAudioOutput->isInit()){
 		pulseAudioOutput->cleanBuffer();
