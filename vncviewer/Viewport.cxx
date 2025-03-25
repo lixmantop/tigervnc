@@ -677,7 +677,9 @@ void Viewport::handleKeyPress(int systemKeyCode,
   // activation key.
   if (menuKeySym && (keySym == menuKeySym) && !menuRecursion) {
     menuRecursion = true;
+    cc->resetAudio(false);
     popupContextMenu();
+    cc->resetAudio(true);
     menuRecursion = false;
     return;
   }
@@ -814,7 +816,6 @@ void Viewport::popupContextMenu()
 
   if (m == nullptr)
     return;
-
   switch (m->argument()) {
   case ID_DISCONNECT:
     disconnect();

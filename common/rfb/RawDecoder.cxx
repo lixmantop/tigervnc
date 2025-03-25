@@ -28,7 +28,7 @@
 #include <rfb/RawDecoder.h>
 
 using namespace rfb;
-// neticar
+
 RawDecoder::RawDecoder(int _jpeg) : Decoder(DecoderPlain)
 {
 	jpeg=_jpeg;

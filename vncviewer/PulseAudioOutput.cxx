@@ -46,6 +46,7 @@ void stream_state_cb(pa_stream *s, void *mainloop);
 void stream_success_cb(pa_stream *stream, int success, void *userdata);
 void stream_write_cb(pa_stream *stream_, size_t requested_bytes, void *userdata);
 void stream_underflow_cb(pa_stream *s, void *userdata);
+bool suspend=false;
 
 void ring_init(char *buffer, size_t size){
 	ring_ptr=buffer;
@@ -209,7 +210,7 @@ init(false)
 	//pa_buffer_attr buffer_attr;
 	buffer_attr.maxlength = pa_usec_to_bytes(latency,&sample_specifications);
 	buffer_attr.tlength = pa_usec_to_bytes(latency,&sample_specifications);
-	buffer_attr.prebuf = (uint32_t) -1;
+	buffer_attr.prebuf = (uint32_t) 0;
 	buffer_attr.minreq = (uint32_t) -1;
 
 	// Settings copied as per the chromium browser source
@@ -244,7 +245,6 @@ void stream_state_cb([[maybe_unused]]pa_stream *s, void *mainloop_) {
 void stream_write_cb(pa_stream *stream_, size_t requested_bytes, [[maybe_unused]]void *userdata) {
 	uint8_t *buffer = NULL;
 	size_t size = getSizeInBuffer();
-
 	if(size>0) {
 		pa_stream_begin_write(stream_, (void**) &buffer, &requested_bytes);
 		ring_pop((char *)buffer,requested_bytes);
@@ -261,11 +261,11 @@ void stream_underflow_cb([[maybe_unused]]pa_stream *s, [[maybe_unused]]void *use
 }
 
 void stream_success_cb([[maybe_unused]]pa_stream *stream_,[[maybe_unused]] int success, [[maybe_unused]]void *userdata) {
-    return;
+	 pa_threaded_mainloop_signal((pa_threaded_mainloop *)mainloop, 0);
 }
 
 size_t PulseAudioOutput::addSamples(const uint8_t* data, size_t size) {
-	if(init) {
+	if(init && !suspend) {
 		ring_push((char *)data,size);
 	}
 	return size;
@@ -278,19 +278,22 @@ return true;
 
 void PulseAudioOutput::cleanBuffer() {
 	ring_last=ring_head=0;
-	pa_threaded_mainloop_lock(mainloop);
-	pa_stream_flush(stream, stream_success_cb, NULL);
-	pa_threaded_mainloop_unlock(mainloop);
 }
 
 void PulseAudioOutput::notifyStreamingStartStop(bool isStart) {
 	if(init) {
 		if(isStart) {
+			suspend=false;
 			pa_threaded_mainloop_lock(mainloop);
+			pa_stream_set_write_callback(stream, stream_write_cb, mainloop);
 			pa_stream_cork(stream, 0, stream_success_cb, mainloop);
 			pa_threaded_mainloop_unlock(mainloop);
 		} else {
+			suspend=true;
 			pa_threaded_mainloop_lock(mainloop);
+			pa_stream_set_write_callback(stream, NULL, mainloop);
+			pa_stream_flush(stream, stream_success_cb, mainloop);
+			pa_stream_drain(stream,stream_success_cb, mainloop);
 			pa_stream_cork(stream, 1, stream_success_cb, mainloop);
 			pa_threaded_mainloop_unlock(mainloop);
 		}
@@ -312,13 +315,13 @@ PulseAudioOutput::~PulseAudioOutput()
 			pa_stream_disconnect(stream);
 			pa_stream_set_write_callback(stream,NULL,NULL);
 			pa_stream_set_state_callback(stream,NULL,NULL);
-			pa_stream_unref(stream);
+			//pa_stream_unref(stream);
 			stream=NULL;
 		}
 		if(context){
 			pa_context_disconnect(context);
 			pa_context_set_state_callback(context,NULL, NULL);
-			pa_context_unref(context);
+			//pa_context_unref(context);
 			context=NULL;
 		}
 		if(mainloop) {

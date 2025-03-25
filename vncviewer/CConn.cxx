@@ -141,6 +141,7 @@ CConn::CConn(const char* vncServerName, network::Socket* socket=nullptr)
   if(!pulseAudioOutput->isInit()) {
 	  delete pulseAudioOutput;
 	  pulseAudioOutput = NULL;
+	  supportsAudio=false;
   }
 #else
   win32AudioOutput = new Win32AudioOutput();
