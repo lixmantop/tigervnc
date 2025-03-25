@@ -158,6 +158,7 @@ CConn::CConn(const char* vncServerName, network::Socket* socket=nullptr)
 }
 
 void CConn::resetAudio(bool startstop) {
+#ifndef WIN32
 	if(pulseAudioOutput !=NULL && pulseAudioOutput->isInit()){
 		pulseAudioOutput->cleanBuffer();
 		if(startstop) {
@@ -166,6 +167,7 @@ void CConn::resetAudio(bool startstop) {
 			pulseAudioOutput->notifyStreamingStartStop(false);
 		}
 	}
+#endif
 }
 
 
